@@ -7,11 +7,9 @@
                 background-color: #2F2235;
             }
             .wrapper{
-                background-color:#60495A;
+                background-color:#2F2235;
                 margin:30px;
-                -webkit-box-shadow: 10px -12px 5px 0px rgba(0,0,0,0.75);
-                -moz-box-shadow: 10px -12px 5px 0px rgba(0,0,0,0.75);
-                box-shadow: 10px -12px 5px 0px rgba(0,0,0,0.75);
+               
             }
             .tooltip {
                 position: absolute;
@@ -55,7 +53,6 @@ const tooltip = wrapper
 wrapper.append("h1")
   .text("USA Educational Data")
   .attr("id", "title")
-  .style("text-align", "center")
   .style("color","#BFC3BA");
 
 wrapper.append("h2")
@@ -63,7 +60,6 @@ wrapper.append("h2")
     "Percentage of adults age 25 and older with a bachelor's degree or higher (2010-2014)"
   )
   .attr("id", "description")
-  .style("text-align", "center")
   .style("color","#BFC3BA");
 
 // LEGEND: #########################################
@@ -139,8 +135,6 @@ function legend(svg, colorScale, dataRange) {
       .range(d3.schemeBlues[9]); // d3.schemeBlues predefined color range
 
       legend(svg, colorScale, dataRange);   // call legend
-
-
 
                 svg.append("g") // gets data and draws the map
                     .selectAll("path")
