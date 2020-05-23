@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>D3 Choropleth Map</title>
+        <style>
+            body{
+                background-color: #2F2235;
+            }
+            .wrapper{
+                background-color:#60495A;
+                margin:30px;
+                -webkit-box-shadow: 10px -12px 5px 0px rgba(0,0,0,0.75);
+                -moz-box-shadow: 10px -12px 5px 0px rgba(0,0,0,0.75);
+                box-shadow: 10px -12px 5px 0px rgba(0,0,0,0.75);
+            }
+            .tooltip {
+                position: absolute;
+                pointer-events: none;
+                opacity: 0;
+                margin-left: 3px;
+                background-color: #161216;
+                color: #A9ACA9;
+                padding: 15px;
+                font-size: 1.3rem;
+                font-family: Arial, Helvetica, sans-serif;
+}
+        </style>
+    </head>
+<body>
+    
+    <script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+    <script src="https://d3js.org/d3.v5.js"></script>
+    <script src="https://unpkg.com/topojson-client@3"></script>
+
+
+<script>
+
+const educationData =
+  "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/for_user_education.json";
+const usaCountyData =
+  "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/counties.json";
+const padding = 100;
+const w = 1024;
+const h = 560;
+const body = d3.select("body");
+const wrapper = body.append("div").attr("class", "wrapper");
+const path = d3.geoPath();
+
+
+const tooltip = wrapper
+  .append("div")
+  .attr("id", "tooltip")
+  .attr("class", "tooltip");
+
+wrapper.append("h1")
+  .text("USA Educational Data")
+  .attr("id", "title")
+  .style("text-align", "center")
+  .style("color","#BFC3BA");
+
+wrapper.append("h2")
+  .text(
+    "Percentage of adults age 25 and older with a bachelor's degree or higher (2010-2014)"
+  )
+  .attr("id", "description")
+  .style("text-align", "center")
+  .style("color","#BFC3BA");
+
+// LEGEND: #########################################
+
+
+function legend(svg, colorScale, dataRange) {               
+  const group = svg
+    .append("g")
+    .attr("id", "legend")
+    .attr("transform", `translate(${w / 2.5}, 0)`);
+
+  const bottomScale = d3
+    .scaleLinear()
+    .domain(dataRange)
+    .rangeRound([0, 300]);
+
+  const bottomAxis = d3
+    .axisBottom(bottomScale)
+    .tickFormat(i => Math.floor(i) + "%")
+    .tickValues(colorScale.domain())
+    .tickSize(13);
+
+  group
+    .selectAll(".legend-item")
+    .data(
+      colorScale.range().map(i => {
+        i = colorScale.invertExtent(i);
+        if (!i[0]) i[0] = bottomScale.domain()[0];
+        if (!i[1]) i[1] = bottomScale.domain()[1];
+        return i;
+      })
+    )
+    .enter()
+    .append("rect")
+    .attr("width", d => bottomScale(d[1]) - bottomScale(d[0]))
+    .attr("height", 8)
+    .attr("x", (d, i) => bottomScale(d[0]))
+    .attr("fill", i => colorScale(i[0]))
+    .attr("stroke", "black")
+    .attr("class", "legend-item");
+
+  group
+    .append("g")
+    .attr("id", "color-axis")
+    .attr("class", "color-tick")
+    .attr("transform", `translate(0, 0)`)
+    .call(bottomAxis);
+  return svg;
+} 
+
+
+//#################################################
+
+
+  d3.json(usaCountyData)
+    .then(county=> {
+        d3.json(educationData)
+            .then(education => {
+                const svg = wrapper  // the 'canvas'
+                    .append("svg")
+                    .attr("width", w + padding)
+                    .attr("height", h + padding)
+                    .style("margin", "0 auto")
+                    .style("display", "block")
+
+    const dataRange = d3.extent(education, i => i.bachelorsOrHigher);     
+
+    const colorScale = d3                    // to color the map
+      .scaleThreshold()
+      .domain(
+        d3.range(dataRange[0], dataRange[1], (dataRange[1] - dataRange[0]) / 8)
+      )
+      .range(d3.schemeBlues[9]); // d3.schemeBlues predefined color range
+
+      legend(svg, colorScale, dataRange);   // call legend
+
+
+
+                svg.append("g") // gets data and draws the map
+                    .selectAll("path")
+                    .data(topojson.feature(county, county.objects.counties).features)   // converts topojson to geojson
+                    .join("path")
+                    .attr("d", path)
+                    .attr("class","county")
+                    .attr("data-fips", d => d.id)
+.attr("data-education",  d => education.find(i => i.fips === d.id).bachelorsOrHigher )  // map education with county  
+
+    .attr("fill", d =>       //  calls the colors defined
+        colorScale(education.find(i => i.fips === d.id).bachelorsOrHigher) )
+
+    .on("mouseover", d => {
+        const target = d3.select(d3.event.target);
+        const item = education.find(i => i.fips === d.id);
+        target.attr("stroke", "black");
+        tooltip
+          .style("opacity", 0.9)
+          .html(
+            `
+            ${item.area_name}, ${item.state}: ${item.bachelorsOrHigher}%
+          `
+          )
+          .style("left", `${d3.event.pageX}px`)
+          .style("top", `${d3.event.pageY + 28}px`)
+          .attr("data-education", item.bachelorsOrHigher);
+      })
+      .on("mouseout", d => {
+        const target = d3.select(d3.event.target);
+        target.attr("stroke", "");
+        tooltip.style("opacity", 0);
+      });
+
+
+        svg.append("path")                //state borders.
+      .datum(
+        topojson.mesh(county, county.objects.states, (a, b) => a !== b)
+      )
+      .attr("fill", "none")
+      .attr("stroke", "gray")
+      .attr("d", path);
+
+    svg.append("path")          //overall border
+      .datum(topojson.mesh(county, county.objects.nation))
+      .attr("fill", "none")
+      .attr("stroke", "black")
+      .attr("d", path);
+
+    })
+    })
+
+
+
+</script>
+
+</body>
+</html>
+
